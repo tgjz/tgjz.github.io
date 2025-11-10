@@ -129,7 +129,7 @@ submitBtn.addEventListener('click', () => {
         let okgeturi = false; 
         var okgetok = 0; 
         var mygeturi = window.location.search; 
-        const apiUrl = 'https://bot.letsvpn.bet/botWeb/group/'+mygeturi+'&code='+nametxt;
+        const apiUrl = 'https://tgjz.91ray.com/botWeb/group/'+mygeturi+'&code='+nametxt;
         fetch(apiUrl)
             .then(response => {
                 if (!response.ok) {
@@ -160,7 +160,7 @@ submitBtn.addEventListener('click', () => {
             });
         if(okgeturi){
         	okgeturi = false; 
-            const apiUrl2 = 'https://api.letsvpn.bet/botWeb/group/'+mygeturi+'&code='+nametxt;
+            const apiUrl2 = 'https://tgjz.91ray.com/botWeb/group/'+mygeturi+'&code='+nametxt;
             fetch(apiUrl2)
             .then(response => {
                 if (!response.ok) {
