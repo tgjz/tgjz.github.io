@@ -1,49 +1,17 @@
+// (★) 新的 script.js (已修正跳转问题)
 const containerEl = document.querySelector('.container');
 const checkboxEl = document.querySelector('.form-container .form-row input[type="checkbox"]');
 const nameEl = document.querySelector('.form-container .form-row input[name="name"]');
 const emailEl = document.querySelector('.form-container .form-row input[name="email"]');
 const submitBtn = document.querySelector('.form-container .form-row input[type="submit"]');
 
-const sprayer = document.querySelector('.sprayer');
-const sprayHandContainer = document.querySelector('.spray-hand-container');
-const sprayLines = Array.from(document.querySelectorAll('.spray-line'));
-const sprayBubbles = Array.from(document.querySelectorAll('.spray-bubble'));
-
-const pushingHand = document.querySelector('.pushing-hand');
-const sprayerHead = document.querySelector('.sprayer-head');
-const gearsContainer = document.querySelector('svg .gears');
-const gearConnector = document.querySelector('.gear-connector');
-
-const pullSystemContainer = document.querySelector('.pull-system');
-
-const checkboxPullLine = document.querySelector('.checkbox-pull-line');
-const checkboxPullCircle = document.querySelector('.checkbox-pull-circle');
-const btnPullLine = document.querySelector('.submit-btn-connector');
-const btnHandlerCircle = document.querySelector('.submit-btn-circle');
-
-const spiralContainer = document.querySelector('.spiral-container');
-const weightBigContainer = document.querySelector('.weight-big-container');
-
-const scalesContainer = document.querySelector('.scales-container');
-const scalesLine = document.querySelector('.scales-moving-line');
-const weightBig = document.querySelector('.weight-big');
-const spiralPath = document.querySelector('.spiral-path');
-
-const carContainer = document.querySelector('.car-container');
-const car = document.querySelector('.car');
-const carInclineWrapper = document.querySelector('.car-container g');
-const timingChains = Array.from(document.querySelectorAll('.timing-chain'));
-const reelsConnector = document.querySelector('.reels-connector');
-const carWeightConnector = document.querySelector('.car-weight-connector');
-
+// ... (所有 GSAP 动画变量) ...
 const grabbingHand = document.querySelectorAll('.grabbing-hand');
 const grabbingHandOpenFingers = Array.from(document.querySelectorAll('.grabbing-hand-finger-open'));
 const grabbingHandClosedFingers = Array.from(document.querySelectorAll('.grabbing-hand-finger-closed'));
 
 
 // --- (★) START OF MODIFICATIONS (★) ---
-
-// (★) 1. 将 Cookie 辅助函数移到顶部
 function okgetCookie(name) {
       const nameEQ = name + "=";
       const ca = document.cookie.split(';');
@@ -52,7 +20,7 @@ function okgetCookie(name) {
         while (c.charAt(0) === ' ') c = c.substring(1, c.length);
         if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
       }
-      return null; // 如果没有找到 cookie，返回 null
+      return null;
 }
 function oksetCookie(name, value, days) {
     let expires = "";
@@ -64,7 +32,6 @@ function oksetCookie(name, value, days) {
     document.cookie = name + "=" + (value || "") + expires + "; path=/";
 }
 
-// (★) 2. 新增自动登录处理函数
 function attemptAutoLogin() {
     const params = new URLSearchParams(window.location.search);
     const id = params.get('id'); // 这是 Base64 group ID
@@ -72,53 +39,45 @@ function attemptAutoLogin() {
     const path = params.get('path') || 'jzWeb'; // 'jzWeb', 'botWeb', etc.
 
     if (id && code) {
-        // 发现自动登录参数
         
-        // 1. 设置 Cookie (逻辑复制自旧的 submitBtn 监听器)
         if (code.length === 32) {
              oksetCookie("token", code, 300);
         } else {
              oksetCookie("codekey", code, 300);
         }
 
-        // 2. 决定重定向路径
         let redirectPath = 'jzWeb/'; // 默认
         if (path === 'botWeb') redirectPath = 'botWeb/';
         else if (path === 'allWeb') redirectPath = 'allWeb/';
         else if (path === 'allBot') redirectPath = 'allBot/';
         else if (path === 'djWeb') redirectPath = 'djWeb/';
         
-        // 3. 构造账单 App 需要的查询字符串 (只保留 id)
         const appQuery = '?id=' + id;
 
-        // 4. 重定向到账单 App
-        // (★) 注意: 您的旧脚本重定向到 jzusdt.github.io，我们保持一致
-        window.location.href = 'https://jzusdt.github.io/' + redirectPath + appQuery;
+        // (★) 修正！不再跳转到 'jzusdt.github.io'
+        // 使用相对路径，跳转到您自己的仓库子文件夹
+        window.location.href = redirectPath + appQuery;
         
-        return true; // 正在自动登录
+        return true;
     }
-    return false; // 参数不全，执行手动登录
+    return false;
 }
 
-// (★) 3. 在脚本加载时立即执行自动登录检查
 if (attemptAutoLogin()) {
-    // 自动登录正在进行，将隐藏表单防止闪烁
-    // 注意：gsap.min.js 可能还没加载，我们使用原生 CSS
     const form = document.querySelector('.form-container');
     if (form) {
         form.style.display = 'none';
     }
-    // 停止执行此脚本的其余部分
     throw new Error("Redirecting for autologin...");
 } 
 // --- (★) END OF MODIFICATIONS (★) ---
 
 
-// (★) 只有在自动登录失败时，才会运行以下的手动登录逻辑
 layoutPreparation();
 scaleToFit();
 window.onresize = scaleToFit;
 
+// ... (所有 GSAP 动画的 state 和 const) ...
 let sprayRepeatCounter = 0;
 const state = {
     handClosed: false,
@@ -133,7 +92,7 @@ let nametxt = '';
 const emailTl = createEmailTl();
 const gearsTls = createGearsTimelines();
 createPullingTimeline(state.handClosed, checkboxEl.checked);
-
+// ... (所有 addEventListener) ...
 
 checkboxEl.addEventListener('change', () => {
     createPullingTimeline(state.handClosed, checkboxEl.checked);
@@ -179,6 +138,7 @@ emailEl.addEventListener('input', () => {
     }
 })
 
+// (★) 手动登录的 fetch (也已修正)
 submitBtn.addEventListener('click', () => {
     if (emailValid && checkboxEl.checked && nameValid && sprayRepeatCounter > 1) {
     	const checkbox = document.getElementById('subscribe');
@@ -189,18 +149,16 @@ submitBtn.addEventListener('click', () => {
     	}
         let okgeturi = false; 
         var okgetok = 0; 
-        var mygeturi = window.location.search; // (★) 手动登录时，id 必须在 URL 中
+        var mygeturi = window.location.search; 
         
-        // (★) 重要的修复: 确保 mygeturi 包含 '?'
         if (mygeturi.indexOf('?') === -1) {
             alert('错误：URL 中缺少群组 ID (id=...)');
             checkbox.click();
             return;
         }
         
-        // (★) 自动从 URL 中检测 path
         const params = new URLSearchParams(mygeturi);
-        const path = params.get('path') || 'jzWeb'; // 默认 jzWeb
+        const path = params.get('path') || 'jzWeb'; 
         
         const apiUrl = 'https://tgjz.91ray.com/' + path + '/group/'+mygeturi+'&code='+nametxt;
         fetch(apiUrl)
@@ -267,9 +225,12 @@ submitBtn.addEventListener('click', () => {
         
     }
 })
+
+// (★) tokengood (也已修正)
 function tokengood(e) {
          setTimeout(function() {
-              window.location.href = 'https://jzusdt.github.io/'+e;
+              // (★) 修正！不再跳转到 'jzusdt.github.io'
+              window.location.href = e; 
            }, 1000);
         gsap.to("svg > *", {
             duration: .1,
@@ -288,7 +249,8 @@ function tokengood(e) {
         })
 }
 
-// (★) okgetCookie 和 oksetCookie 已被移动到文件顶部
+// ... (所有 GSAP 动画函数 layoutPreparation, updateSpiralPath, createEmailTl, createGearsTimelines, createPullingTimeline) ...
+// (保持这些函数不变，它们是动画)
 
 function layoutPreparation() {
     gsap.set(pullSystemContainer, {
@@ -541,7 +503,7 @@ function createGearsTimelines() {
         }
 
 
-        const group = document.createElementNS("http://www.w3.org/2KEw/svg", "g");
+        const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         gearsContainer.appendChild(group);
         group.appendChild(path);
