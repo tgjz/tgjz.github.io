@@ -41,22 +41,83 @@ const grabbingHandOpenFingers = Array.from(document.querySelectorAll('.grabbing-
 const grabbingHandClosedFingers = Array.from(document.querySelectorAll('.grabbing-hand-finger-closed'));
 
 
+// --- (★) START OF MODIFICATIONS (★) ---
+
+// (★) 1. 将 Cookie 辅助函数移到顶部
+function okgetCookie(name) {
+      const nameEQ = name + "=";
+      const ca = document.cookie.split(';');
+      for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+      }
+      return null; // 如果没有找到 cookie，返回 null
+}
+function oksetCookie(name, value, days) {
+    let expires = "";
+    if (days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "") + expires + "; path=/";
+}
+
+// (★) 2. 新增自动登录处理函数
+function attemptAutoLogin() {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id'); // 这是 Base64 group ID
+    const code = params.get('code'); // 这是 API_PASSWORD
+    const path = params.get('path') || 'jzWeb'; // 'jzWeb', 'botWeb', etc.
+
+    if (id && code) {
+        // 发现自动登录参数
+        
+        // 1. 设置 Cookie (逻辑复制自旧的 submitBtn 监听器)
+        if (code.length === 32) {
+             oksetCookie("token", code, 300);
+        } else {
+             oksetCookie("codekey", code, 300);
+        }
+
+        // 2. 决定重定向路径
+        let redirectPath = 'jzWeb/'; // 默认
+        if (path === 'botWeb') redirectPath = 'botWeb/';
+        else if (path === 'allWeb') redirectPath = 'allWeb/';
+        else if (path === 'allBot') redirectPath = 'allBot/';
+        else if (path === 'djWeb') redirectPath = 'djWeb/';
+        
+        // 3. 构造账单 App 需要的查询字符串 (只保留 id)
+        const appQuery = '?id=' + id;
+
+        // 4. 重定向到账单 App
+        // (★) 注意: 您的旧脚本重定向到 jzusdt.github.io，我们保持一致
+        window.location.href = 'https://jzusdt.github.io/' + redirectPath + appQuery;
+        
+        return true; // 正在自动登录
+    }
+    return false; // 参数不全，执行手动登录
+}
+
+// (★) 3. 在脚本加载时立即执行自动登录检查
+if (attemptAutoLogin()) {
+    // 自动登录正在进行，将隐藏表单防止闪烁
+    // 注意：gsap.min.js 可能还没加载，我们使用原生 CSS
+    const form = document.querySelector('.form-container');
+    if (form) {
+        form.style.display = 'none';
+    }
+    // 停止执行此脚本的其余部分
+    throw new Error("Redirecting for autologin...");
+} 
+// --- (★) END OF MODIFICATIONS (★) ---
+
+
+// (★) 只有在自动登录失败时，才会运行以下的手动登录逻辑
 layoutPreparation();
 scaleToFit();
 window.onresize = scaleToFit;
-
-function scaleToFit() {
-    const h = 800;
-
-    if (window.innerHeight < h) {
-        gsap.set(containerEl, {
-            scale: window.innerHeight / h,
-            transformOrigin: "50% 75%"
-        })
-    }
-
-}
-
 
 let sprayRepeatCounter = 0;
 const state = {
@@ -128,8 +189,20 @@ submitBtn.addEventListener('click', () => {
     	}
         let okgeturi = false; 
         var okgetok = 0; 
-        var mygeturi = window.location.search; 
-        const apiUrl = 'https://tgjz.91ray.com/jzWeb/group/'+mygeturi+'&code='+nametxt;
+        var mygeturi = window.location.search; // (★) 手动登录时，id 必须在 URL 中
+        
+        // (★) 重要的修复: 确保 mygeturi 包含 '?'
+        if (mygeturi.indexOf('?') === -1) {
+            alert('错误：URL 中缺少群组 ID (id=...)');
+            checkbox.click();
+            return;
+        }
+        
+        // (★) 自动从 URL 中检测 path
+        const params = new URLSearchParams(mygeturi);
+        const path = params.get('path') || 'jzWeb'; // 默认 jzWeb
+        
+        const apiUrl = 'https://tgjz.91ray.com/' + path + '/group/'+mygeturi+'&code='+nametxt;
         fetch(apiUrl)
             .then(response => {
                 if (!response.ok) {
@@ -143,10 +216,10 @@ submitBtn.addEventListener('click', () => {
                 if(data.ok == true){
                   if(nametxt.length == 32){
                      oksetCookie("token", nametxt, 300);
-                      var okayuri = 'allWeb/'+mygeturi;
+                      var okayuri = (path === 'jzWeb' ? 'allWeb' : 'allBot') + '/' + mygeturi;
                   }else{
                     oksetCookie("codekey", nametxt, 300);
-                      var okayuri = 'jzWeb/'+mygeturi;
+                      var okayuri = path + '/' + mygeturi;
                   }
                   tokengood(okayuri);
                 }else{
@@ -160,7 +233,7 @@ submitBtn.addEventListener('click', () => {
             });
         if(okgeturi){
         	okgeturi = false; 
-            const apiUrl2 = 'https://tgjz.91ray.com/jzWeb/group/'+mygeturi+'&code='+nametxt;
+            const apiUrl2 = 'https://tgjz.91ray.com/' + path + '/group/'+mygeturi+'&code='+nametxt;
             fetch(apiUrl2)
             .then(response => {
                 if (!response.ok) {
@@ -173,10 +246,10 @@ submitBtn.addEventListener('click', () => {
                 if(data.ok == true){
                   if(nametxt.length == 32){
                      oksetCookie("token", nametxt, 300);
-                      var okayuri = 'allWeb/'+mygeturi;
+                      var okayuri = (path === 'jzWeb' ? 'allWeb' : 'allBot') + '/' + mygeturi;
                   }else{
                     oksetCookie("codekey", nametxt, 300);
-                      var okayuri = 'jzWeb/'+mygeturi;
+                      var okayuri = path + '/' + mygeturi;
                   }
                   tokengood(okayuri);
                 }else{
@@ -214,25 +287,9 @@ function tokengood(e) {
             stagger: .1
         })
 }
-function okgetCookie(name) {
-      const nameEQ = name + "=";
-      const ca = document.cookie.split(';');
-      for (let i = 0; i < ca.length; i++) {
-        let c = ca[i];
-        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
-      }
-      return null; // 如果没有找到 cookie，返回 null
-}
-function oksetCookie(name, value, days) {
-    let expires = "";
-    if (days) {
-        const date = new Date();
-        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-        expires = "; expires=" + date.toUTCString();
-    }
-    document.cookie = name + "=" + (value || "") + expires + "; path=/";
-}
+
+// (★) okgetCookie 和 oksetCookie 已被移动到文件顶部
+
 function layoutPreparation() {
     gsap.set(pullSystemContainer, {
         x: 375,
@@ -484,7 +541,7 @@ function createGearsTimelines() {
         }
 
 
-        const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        const group = document.createElementNS("http://www.w3.org/2KEw/svg", "g");
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         gearsContainer.appendChild(group);
         group.appendChild(path);
